@@ -1,4 +1,4 @@
-(in-package :cl-mesh)
+(in-package :cl-user)
 
 (defpackage #:cl-mesh-system (:use #:cl #:asdf))
 (in-package #:cl-mesh-system)
@@ -18,7 +18,8 @@ and download instructions."))
     :license "GPL v3"
     :serial t
     :components 
-    ((:file "package"))
+    ((:file "package")
+     (:file "wavefront-obj")
+     (:file "mesh"))
     
     :depends-on (:alexandria :metabang-bind :iterate :yacc :cl-lex))
-

@@ -1,50 +1,72 @@
 (in-package :cl-mesh)
 
 (define-string-lexer wavefront-obj-lexer
-  ("([0-9]+)\\s" (return (values 'int (parse-integer $1))))
-  ("([0-9]+)$" (return (values 'int (parse-integer $1))))
-  ("([-+]?[0-9]*)\\.?([0-9]+)" (return (values 'float 
-					       (float (/ (parse-integer (concatenate 'string $1 $2))
-							 (if (= (length $1) 0)
-							     1
-							     (expt 10 (length $2))))))))
+  ("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?" (return (values 'float
+							     (read-from-string $@))))
   ("v" (return (values 'v $@)))
   ("n" (return (values 'n $@)))
   ("f" (return (values 'f $@))))
 
-(defun add-vertex (v vl)
-  (cons v vl))
+(eval-when (:compile-toplevel :load-toplevel :execute)
 
-(defun make-vertex (v a b c)
+(defun rcons (a b) (cons b a))
+(defun wop-make-float-triple (v a b c)
   (declare (ignore v))
   (vector a b c))
-(defun make-face (f a b c)
+(defun wop-make-face (f a b c)
   (declare (ignore f))
   (list a b c))
+(defun wop-make-dbl (db)
+  (let ((ht (make-hash-table)))
+    (setf (gethash (car db) ht) (cdr db))
+    ht))
+(defun wop-add-db (ht db)
+  (setf (gethash (car db) ht) (cdr db))
+  ht))
 
-(defun make-final-obj (vertex-list face-list))
-
-(define-parser *wavefront-obj-grammar*
+(define-parser *wavefront-obj-parser*
   (:start-symbol wavefront-obj)
   (:terminals (float int v n f))
-  
+  (:precedence ((:right data-block-list) (:left vertex-list normal-list face-list) (data-block) (vertex normal face)))
+
   (wavefront-obj
-   (vertex-list face-list #'list))
+   data-block-list)
+  
+  (data-block-list
+   (data-block #'wop-make-dbl)
+   (data-block-list data-block #'wop-add-db))
+
+  ;; data blocks are cons pairs
+  ;; the car is a symbol identifier
+  ;; the cdr is the data
+  (data-block
+   (vertex-list #'(lambda (vl) (cons 'points (make-array (length vl) :initial-contents vl))))
+   (normal-list #'(lambda (nl) (cons 'normals (make-array (length nl) :initial-contents nl))))
+   (face-list #'(lambda (fl) (cons 'faces (make-array (list (length fl) 3) :initial-contents fl)))))
 
   (vertex-list
    (vertex #'list)
-   (vertex vertex-list #'cons))
+   (vertex-list vertex #'rcons))
+
   (vertex 
-   (v float float float #'make-vertex))
+   (v float float float #'wop-make-float-triple))
+
+  (normal-list
+   (normal #'list)
+   (normal normal-list #'cons))
+  (normal 
+   (n float float float #'wop-make-float-triple))
   
   (face-list
    (face #'list)
    (face face-list #'cons))
   
+  ;; for now, the grammar only supports triangles
   (face
-   (f int int int #'make-face)))
-  
-(defun parse-wavefront-obj (str)
-  (parse-with-lexer 
-   (wavefront-obj-lexer str)
-   *wavefront-obj-grammar*))
+   (f float float float #'wop-make-face)))
+
+(defun parse-wavefront-obj (filename)
+  (with-open-file (str filename :direction :input)
+    (parse-with-lexer 
+     (stream-lexer (rcurry #'read-line nil t) #'wavefront-obj-lexer (constantly t) (constantly nil) :stream str)
+     *wavefront-obj-parser*)))
