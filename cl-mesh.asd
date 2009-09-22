@@ -22,4 +22,4 @@ and download instructions."))
      (:file "wavefront-obj")
      (:file "mesh"))
     
-    :depends-on (:alexandria :metabang-bind :iterate :yacc :cl-lex))
+    :depends-on (:alexandria :iterate :yacc :cl-lex))
