@@ -1,7 +1,8 @@
 (defpackage :cl-mesh
   (:use :common-lisp :alexandria
-	:iterate :cl-lex :yacc)
+	:iterate :split-sequence)
   (:export
-   #:parse-wavefront-obj))
+   #:parse-wavefront-obj
+   #:mesh-properties))
 
 (in-package :cl-mesh)
