@@ -1,0 +1,47 @@
+(in-package :cl-mesh)
+
+(defun make-mesh-from-parametric (xfn yfn zfn 
+				  uv-range &key (num-u 101) (num-v 101) (derivp nil))
+  "UV-RANGE is (umin vmin umax vmax)"
+  (bind (((umin vmin umax vmax) uv-range)
+	 (du (/ (- umax umin) (1- num-u)))
+	 (dv (/ (- vmax vmin) (1- num-v)))
+	 (vertices nil)
+	 (normals nil)
+	 (indices nil))
+    ;; build the vertices and normals
+    (dotimes (j num-v)
+      (dotimes (i num-u)
+	(bind ((u (+ umin (* i du)))
+	       (v (+ vmin (* j dv)))
+	       ((:values x dx) (funcall xfn u v))
+	       ((:values y dy) (funcall yfn u v))
+	       ((:values z dz) (funcall zfn u v)))
+	  (push (vector x y z) vertices)
+	  (when derivp
+	    (bind ((#(dxu dxv) dx)
+		   (#(dyu dyv) dy)
+		   (#(dzu dzv) dz)
+		   (nx (- (* dyu dzv) (* dzu dyv)))
+		   (ny (- (* dzu dxv) (* dxu dzv)))
+		   (nz (- (* dxu dyv) (* dyu dxv))))
+	      (push (map 'vector (rcurry #'/ (sqrt (+ (* nx nx) (* ny ny) (* nz nz)))) (vector nx ny nz))
+		    normals))))))
+    ;; build the indices
+    (dotimes (j (1- num-v))
+      (dotimes (i (1- num-u))
+	(let ((curr (+ (* j num-u) i)))
+	  (push (list curr (+ curr 1) (+ curr num-u)) indices)
+	  (push (list (+ curr num-u) (+ curr 1) (+ curr num-u 1)) indices))))
+    (let ((mesh-ht (make-hash-table :test #'equal)))
+      (setf (gethash "vertices" mesh-ht) (apply #'vector vertices))
+      (setf (gethash "normals" mesh-ht) (apply #'vector normals))
+      (setf (gethash "indices" mesh-ht) 
+	    (make-array (list (length indices) 3) :initial-contents indices))
+      mesh-ht)))
+
+(defun make-mesh-from-graph (zfn uv-range &key (num-u 101) (num-v 101) (derivp nil))
+  (make-mesh-from-parametric 
+   #'(lambda (x y) (declare (ignore y)) (values x #(1 0)))
+   #'(lambda (x y) (declare (ignore x)) (values y #(0 1)))
+   zfn uv-range :num-u num-u :num-v num-v :derivp derivp))

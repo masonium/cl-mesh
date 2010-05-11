@@ -20,6 +20,7 @@ and download instructions."))
     :components 
     ((:file "package")
      (:file "wavefront-obj")
+     (:file "surface")
      (:file "mesh"))
     
-    :depends-on (:alexandria :iterate :split-sequence))
+    :depends-on (:alexandria :iterate :split-sequence :metabang-bind))

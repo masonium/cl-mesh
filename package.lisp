@@ -1,7 +1,9 @@
 (defpackage :cl-mesh
   (:use :common-lisp :alexandria
-	:iterate :split-sequence)
+	:iterate :split-sequence :metabang-bind)
   (:export
+   #:make-mesh-from-parametric
+   #:make-mesh-from-graph
    #:parse-wavefront-obj
    #:mesh-properties))
 
