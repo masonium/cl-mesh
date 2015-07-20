@@ -12,4 +12,5 @@
      (:file "wavefront-obj")
      (:file "surface")
      (:file "mesh"))
-    :depends-on (:alexandria :iterate :split-sequence :metabang-bind))
+  :depends-on (:alexandria :iterate :split-sequence :metabang-bind
+                           :anaphora))

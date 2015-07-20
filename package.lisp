@@ -1,6 +1,7 @@
 (defpackage :cl-mesh
   (:use :common-lisp :alexandria
-	:iterate :split-sequence :metabang-bind)
+	:iterate :split-sequence :metabang-bind
+        :anaphora)
   (:export
    #:make-mesh-from-parametric
    #:make-mesh-from-graph
