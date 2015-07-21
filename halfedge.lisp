@@ -18,7 +18,7 @@
 (defclass vertex ()
   ((pos :initarg :position)
    (half-edge :initarg :half-edge
-               :initform nil)))
+              :initform nil)))
 
 (defstruct (half-edge-mesh (:constructor))
   half-edges
@@ -115,7 +115,7 @@
        (,kwd ,edge next (if (null ,edge)
                             (setf ,edge ,first-he)
                             (prog1
-                              (setf ,edge (he-opposite (he-prev ,edge)))
+                                (setf ,edge (he-opposite (he-prev ,edge)))
                               (when (eq ,edge ,first-he)
                                 (terminate))))))))
 
@@ -140,11 +140,10 @@ n-sides."
   "Construct a half-edge mesh of a prism, with a base of n sides."
   (make-he-from-indices
    (cons (nreverse (iota n))
-         (cons (nreverse (iota n :start n))
-               (mapcar #'(lambda (i) (list i
-                                            (mod (1+ i) n)
-                                            (+ n (mod (1+ i) n))
-                                            (+ i n)))
+         (cons (iota n :start n)
+               (mapcar
+                #'(lambda (i)
+                    (list i (mod (1+ i) n) (+ n (mod (1+ i) n)) (+ n i)))
                        (iota n))))))
 
 (defun make-cube ()
