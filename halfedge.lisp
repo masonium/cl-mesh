@@ -36,8 +36,9 @@
 (defun make-he-from-indices (faces &optional (vertex-class 'vertex))
   "A face is a "
   (let ((he-map (make-hash-table :test 'equal))
-        (vert-map (make-hash-table))
+        (vert-map (make-hash-table :test 'equal))
         hem-faces)
+    ;; We construct edges and vertices on demand, basd on
     (labels ((get-vert (i)
                (aif (gethash i vert-map)
                     it
@@ -52,7 +53,6 @@
         (for face in faces)
         (for hem-face = (make-face))
         (push hem-face hem-faces)
-        ;; For each, pair of vertices, create an edge
         (for half-edges =
              (iterate
                (for i below (length face))
@@ -63,11 +63,8 @@
                      (he-v2 he) (get-vert v2)
                      (he-opposite he) (get-he v2 v1)
                      (he-face he) hem-face
-                     (slot-value (get-vert v1) 'half-edge) he
-                     )
-
+                     (slot-value (get-vert v1) 'half-edge) he)
                (collect he)))
-
         (for last-edge =
              (iterate
                (for e2 in (cdr half-edges))
@@ -75,7 +72,6 @@
                (setf (he-next e1) e2
                      (he-prev e2) e1)
                (finally (return e2))))
-        (print last-edge)
         (setf (he-prev (first half-edges)) last-edge
               (he-next last-edge) (first half-edges)
               (face-half-edge hem-face) last-edge))
@@ -109,28 +105,47 @@
        (for-edge ,edge in-face ,f)
        (,kwd ,other-face next (he-face (he-opposite ,edge))))))
 
-(defmacro-driver (FOR-FACE face IN-VERTEX vert)
+(defmacro-driver (FOR-EDGE edge IN-VERTEX vert)
   (let ((v (gensym))
-        (f (gensym))
+        (first-he (gensym))
         (kwd (if generate 'generate 'for)))
     `(progn
        (with ,v = ,vert)
-       (with ,he = (slot-value ,v 'half-edge))
-       (,kwd ,face next (if (null face)
-                            (he-face ,he)
-                            (progn
-                              (setf ,he (he-opposite (he-prev he)))
-                              (when (eq ,he ,first-he)
-                                (terminate))
-                              (he-face ,he)))))))
+       (with ,first-he = (slot-value ,v 'half-edge))
+       (,kwd ,edge next (if (null ,edge)
+                            (setf ,edge ,first-he)
+                            (prog1
+                              (setf ,edge (he-opposite (he-prev ,edge)))
+                              (when (eq ,edge ,first-he)
+                                (terminate))))))))
 
-(defun make-cube (&optional (vertex-class 'vertex))
-  "constructu a half-edge-mesh representation of a cube"
-  (let ((vpos (map-product #'vector '(-1 1) '(-1 1) '(-1 1)))
-        (indices '((0 1 2 3)
-                   (4 5 0 1)
-                   (6 7 4 5)
-                   (2 3 6 7)
-                   (1 5 3 7)
-                   (4 0 6 2))))
-    (make-he-from-indices indices)))
+(defmacro-driver (FOR-FACE face IN-VERTEX vert)
+  (let ((edge (gensym))
+        (v (gensym))
+        (kwd (if generate 'generate 'for)))
+    `(progn
+       (with ,v = ,vert)
+       (for-edge ,edge in-vertex ,v)
+       (,kwd ,face next (he-face ,edge)))))
+
+(defun make-pyramid (&optional (n 3))
+  "Construct a half-edge mesh representing a pyramid, where the base has
+n-sides."
+  (make-he-from-indices
+   (cons (nreverse (iota n))
+         (mapcar #'(lambda (i) (list i (mod (1+ i) n) n))
+                 (iota n)))))
+
+(defun make-prism (&optional (n 3))
+  "Construct a half-edge mesh of a prism, with a base of n sides."
+  (make-he-from-indices
+   (cons (nreverse (iota n))
+         (cons (nreverse (iota n :start n))
+               (mapcar #'(lambda (i) (list i
+                                            (mod (1+ i) n)
+                                            (+ n (mod (1+ i) n))
+                                            (+ i n)))
+                       (iota n))))))
+
+(defun make-cube ()
+  (make-prism 4))
