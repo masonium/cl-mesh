@@ -11,6 +11,8 @@
     ((:file "package")
      (:file "wavefront-obj")
      (:file "surface")
-     (:file "mesh"))
+     (:file "mesh")
+     (:file "halfedge")
+     (:file "conway"))
   :depends-on (:alexandria :iterate :split-sequence :metabang-bind
                            :anaphora))
