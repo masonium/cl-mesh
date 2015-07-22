@@ -63,7 +63,7 @@ dual of the new objects."
            (for-face face in-vertex vertex)
            (collect (face-to-dual-vert face)))))))
 
-(desfconway ambo "a" (:edge)
+(defconway ambo "a" (:edge)
   (make-he-from-indices
    (append
     (iterate (for face in faces)
@@ -117,10 +117,18 @@ dual of the new objects."
                                                          *conway-operators*))
                               to))))
 
+(mapcar #'(lambda (x) (apply #'conway-translation x))
+	'(("j" "da")
+	  ("b" "ta")
+	  ("m" "kj")
+	  ("o" "ja")
+	  ("e" "aa")
+	  ("n" "kd")))
+
 (defun conway (ident mesh)
   (funcall (apply #'compose (map 'list
                                  #'(lambda (x) (gethash (string-downcase (string x))
                                                         *conway-operators*
                                                         #'identity))
                                  ident))
-           mesh))))
+           mesh))
