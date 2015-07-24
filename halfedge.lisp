@@ -105,6 +105,15 @@
        (for-edge ,edge in-face ,f)
        (,kwd ,other-face next (he-face (he-opposite ,edge))))))
 
+(defmacro-driver (FOR-VERTEX vertex IN-FACE face)
+  (let ((edge (gensym))
+        (f (gensym))
+        (kwd (if generate 'generate 'for)))
+    `(progn
+       (with ,f = ,face)
+       (for-edge ,edge in-face ,f)
+       (,kwd ,vertex next (he-v1 ,edge)))))
+
 (defmacro-driver (FOR-EDGE edge IN-VERTEX vert)
   (let ((v (gensym))
         (first-he (gensym))
