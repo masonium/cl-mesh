@@ -33,8 +33,10 @@
     (format stream "#<HEM V=~A E=~A F=~A>"
             (length vertexes) (/ (length half-edges) 2) (length faces))))
 
-(defun make-he-from-indices (faces &optional (vertex-class 'vertex))
-  "A face is a "
+
+
+(defun make-hem (faces &optional positions (vertex-class 'vertex))
+  "A face is a list of vertex indices in counter-clockwise order"
   (let ((he-map (make-hash-table :test 'equal))
         (vert-map (make-hash-table :test 'equal))
         hem-faces)
@@ -75,6 +77,9 @@
         (setf (he-prev (first half-edges)) last-edge
               (he-next last-edge) (first half-edges)
               (face-half-edge hem-face) last-edge))
+      (when positions
+        (maphash #'(lambda (k v) (setf (slot-value v 'pos) (elt positions k)))
+                 vert-map))
       (make-half-edge-mesh :half-edges (hash-table-values he-map)
                            :vertexes (hash-table-values vert-map)
                            :faces hem-faces))))
@@ -140,20 +145,28 @@
 (defun make-pyramid (&optional (n 3))
   "Construct a half-edge mesh representing a pyramid, where the base has
 n-sides."
-  (make-he-from-indices
+  (make-hem
    (cons (nreverse (iota n))
          (mapcar #'(lambda (i) (list i (mod (1+ i) n) n))
-                 (iota n)))))
+                 (iota n)))
+   (let ((am (/ (* 2 pi) n)))
+     (append
+      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) -1.0)) (iota n))
+      (list (vector 0 0 1))))))
 
 (defun make-prism (&optional (n 3))
   "Construct a half-edge mesh of a prism, with a base of n sides."
-  (make-he-from-indices
+  (make-hem
    (cons (nreverse (iota n))
          (cons (iota n :start n)
                (mapcar
                 #'(lambda (i)
                     (list i (mod (1+ i) n) (+ n (mod (1+ i) n)) (+ n i)))
-                       (iota n))))))
+                (iota n))))
+   (let ((am (/ (* 2 pi) n)))
+     (append
+      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) -1.0)) (iota n))
+      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) 1.0)) (iota n))))))
 
 (defun make-cube ()
   (make-prism 4))
