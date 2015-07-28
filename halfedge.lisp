@@ -84,6 +84,21 @@
                            :vertexes (hash-table-values vert-map)
                            :faces hem-faces))))
 
+(defun format-hem-as-obj (hem &optional (stream *standard-output*))
+  "Write the half-edge mesh to the input stream"
+  (with-slots (vertexes faces) hem
+    (let ((vertex-map (make-hash-table :size (length vertexes))))
+      (iterate
+        (for vertex in vertexes)
+        (for i upfrom 1)
+        (setf (gethash vertex vertex-map) i)
+        (format stream "v~{ ~,6f~}~%" (coerce (slot-value vertex 'pos) 'list)))
+      (format stream "~%")
+      (iterate
+        (for face in faces)
+        (format stream "f~{ ~A~}~%" (iterate (for-vertex vertex in-face face)
+                                      (collect (gethash vertex vertex-map))))))))
+
 (defmacro-driver (FOR-EDGE edge IN-FACE face)
   (let ((f (gensym))
         (first-he (gensym))
