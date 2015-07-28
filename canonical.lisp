@@ -14,10 +14,13 @@
   is in canonical form."
   (let ((pos (map 'vector (lambda (x) (slot-value x 'pos)) (slot-value mesh 'vertexes))))
     (labels ((update-pos (pos mesh)
-               (%canonicalize-edges
-                (%canonicalize-faces
+               (%canonicalize-faces!
+                (%canonicalize-edges!
                  (%canonicalize-center pos) mesh) mesh))
-             (movement (pos new-pos) (reduce #'+ (map 'vector #'v-dist2 pos new-pos))))
+             (movement (pos new-pos) (iterate
+                                       (for v1 in-vector pos)
+                                       (for v2 in-vector new-pos)
+                                       (summing (v-dist2 v1 v2)))))
       (iterate (for c upfrom 0)
         (with old-pos = pos)
         (for new-pos = (update-pos old-pos mesh))
@@ -52,35 +55,33 @@ by the negative centroid."
      (for v2 = (aref pos (slot-value (he-v2 edge) 'index)))
      (reducing (v-cross (v- v1 center) (v- v2 center )) by #'v+))))
 
-(defun %canonicalize-faces (pos mesh &optional (step 1))
+(defun %canonicalize-faces! (pos mesh &optional (step 1))
   "Return a new position array for the mesh, that brings each face closer to being planar.
 
 For each face, project the vertexes on to a plane representative of the face."
-  (let ((new-pos (make-array (length pos) :adjustable nil :initial-contents pos)))
-    (iterate (for face in (slot-value mesh 'faces))
-      (for center = (%face-center-pos face new-pos))
-      ;; Compute the plane on which the vertexes will be projected, defined by
-      ;; avg-norm and dist.
-      (for avg-norm = (%face-average-normal face center new-pos))
-      (for dist = (v-dot center avg-norm))
-      (iterate (for-vertex v in-face face)
-        (for i = (slot-value v 'index))
-        (for old = (aref new-pos i))
-        ;; Project the vertexes onto the plane.
-        (for f = (* step (- (v-dot avg-norm old) dist)))
-        (setf (aref new-pos i) (v- old (v*f avg-norm f)))))
-    new-pos))
+  (iterate (for face in (slot-value mesh 'faces))
+    (for center = (%face-center-pos face pos))
+    ;; Compute the plane on which the vertexes will be projected, defined by
+    ;; avg-norm and dist.
+    (for avg-norm = (%face-average-normal face center pos))
+    (for dist = (v-dot center avg-norm))
+    (iterate (for-vertex v in-face face)
+      (for i = (slot-value v 'index))
+      (for old = (aref pos i))
+      ;; Project the vertexes onto the plane.
+      (for f = (* step (- (v-dot avg-norm old) dist)))
+      (setf (aref pos i) (v- old (v*f avg-norm f)))))
+  pos)
 
-(defun %canonicalize-edges (pos mesh)
+(defun %canonicalize-edges! (pos mesh)
   "Return a new position array for the mesh that tries to canonicalize the edges."
-  (let ((new-pos (make-array (length pos) :adjustable nil :initial-contents pos)))
-    (labels ((update-vertex (i cosa)
-               (let ((old (aref new-pos i)))
-                 (setf (aref new-pos i) (v*f old (sqrt (/ 2 (* (v-norm old) (1+ cosa)))) )))))
-      (iterate (for edge in (slot-value mesh 'half-edges))
-        (for v1 = (he-v1 edge))
-        (for v2 = (he-v2 edge))
-        (for ca = (v-cos-angle (aref new-pos (vert-index v1)) (aref new-pos (vert-index v2))))
-        (update-vertex (vert-index v1) ca)
-        (update-vertex (vert-index v2) ca)))
-    new-pos))
+  (labels ((update-vertex (i cosa)
+             (let ((old (aref pos i)))
+               (setf (aref pos i) (v*f old (sqrt (/ 2 (* (v-norm old) (1+ cosa)))) )))))
+    (iterate (for edge in (slot-value mesh 'half-edges))
+      (for v1 = (he-v1 edge))
+      (for v2 = (he-v2 edge))
+      (for ca = (v-cos-angle (aref pos (vert-index v1)) (aref pos (vert-index v2))))
+      (update-vertex (vert-index v1) ca)
+      (update-vertex (vert-index v2) ca)))
+  pos)
