@@ -9,14 +9,13 @@
   v1
   v2)
 
-
-
 (defstruct (face (:conc-name face-)
                  (:constructor))
   half-edge)
 
 (defclass vertex ()
-  ((pos :initarg :position)
+  ((pos :initarg :position :accessor vert-pos)
+   (index :initarg :index :accessor vert-index)
    (half-edge :initarg :half-edge
               :initform nil)))
 
@@ -42,7 +41,7 @@
     (labels ((get-vert (i)
                (aif (gethash i vert-map)
                     it
-                    (setf (gethash i vert-map) (make-instance vertex-class))))
+                    (setf (gethash i vert-map) (make-instance vertex-class :index i))))
              (get-he (i1 i2)
                (let ((key (cons i1 i2)))
                  (aif (gethash key he-map)
@@ -79,7 +78,7 @@
         (maphash #'(lambda (k v) (setf (slot-value v 'pos) (elt positions k)))
                  vert-map))
       (make-half-edge-mesh :half-edges (hash-table-values he-map)
-                           :vertexes (hash-table-values vert-map)
+                           :vertexes (mapcar #'(lambda (i) (gethash i vert-map)) (iota (hash-table-count vert-map)))
                            :faces hem-faces))))
 
 (defun format-hem-as-obj (hem &optional (stream *standard-output*))
@@ -94,8 +93,9 @@
       (format stream "~%")
       (iterate
         (for face in faces)
-        (format stream "f~{ ~A~}~%" (iterate (for-vertex vertex in-face face)
-                                      (collect (gethash vertex vertex-map))))))))
+        (format stream "f~{ ~A~}~%"
+                (iterate (for-vertex vertex in-face face)
+                  (collect (gethash vertex vertex-map))))))))
 
 (defmacro-driver (FOR-EDGE edge IN-FACE face)
   (let ((f (gensym))
