@@ -17,6 +17,9 @@
 (defun v-norm (a)
   (sqrt (v-norm2 a)))
 
+(defun v-cos-angle (a b)
+  (/ (v-dot a b) (v-norm a) (v-norm b)))
+
 (defun v-dist2 (a b)
   (v-norm2 (v- a b)))
 

@@ -155,7 +155,7 @@ dual of the new objects."
   (iterate
    (for vertex in vertexes)
    (set-pos (vert-to-dual-vert vertex)
-	    (slot-value vertex 'pos)))
+	    (vert-pos vertex)))
   (make-hem
    (iterate
     (for edge in half-edges)
