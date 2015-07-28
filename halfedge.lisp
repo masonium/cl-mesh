@@ -168,7 +168,7 @@ n-sides."
       (list (vector 0 0 1))))))
 
 (defun make-prism (&optional (n 3))
-  "Construct a half-edge mesh of a prism, with a base of n sides."
+  "Construct a half-edge mesh of a canonical prism, with a base of n sides."
   (make-hem
    (cons (nreverse (iota n))
          (cons (iota n :start n)
@@ -176,10 +176,28 @@ n-sides."
                 #'(lambda (i)
                     (list i (mod (1+ i) n) (+ n (mod (1+ i) n)) (+ n i)))
                 (iota n))))
-   (let ((am (/ (* 2 pi) n)))
+   (let ((am (/ (* 2 pi) n))
+         (z (sin (/ pi n))))
      (append
-      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) -1.0)) (iota n))
-      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) 1.0)) (iota n))))))
+      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) (- z))) (iota n))
+      (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) z)) (iota n))))))
+
+(defun make-antiprism (&optional (n 3))
+  (labels ((m (x) (mod x n)))
+    (let ((face-indices
+            (nconc
+             (list (nreverse (iota n)) (iota n :start n))
+             (mappend (lambda (i) (list (list i (+ n (m (1+ i))) (+ n i))
+                                        (list i (1+ i) (+ n (m (1+ i))))))
+                      (iota n)))))
+      (make-hem
+       face-indices
+       (let ((am (/ (* 2 pi) n))
+             (off (/ pi (- n)))
+             (z (sin (/ pi n))))
+         (nconc
+          (mapcar #'(lambda (i) (vector (cos (* am i)) (sin (* am i)) (- z))) (iota n))
+          (mapcar #'(lambda (i) (vector (cos (+ off (* am i))) (sin (+ off (* am i))) z)) (iota n))))))))
 
 (defun make-cube ()
   (make-prism 4))
