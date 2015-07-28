@@ -11,6 +11,7 @@
     ((:file "package")
      (:file "wavefront-obj")
      (:file "surface")
+     (:file "vec")
      (:file "mesh")
      (:file "halfedge")
      (:file "conway"))
