@@ -23,11 +23,11 @@ dual of the new objects."
     (when (member :edge fn-list)
       (push `(edge-to-dual-vert (edge)
                                 (acond
-				 ((gethash edge ,dual-vert-map) it)
-				 ((gethash (he-opposite edge) ,dual-vert-map) it)
-				 (t
-				  (setf (gethash edge ,dual-vert-map)
-					(hash-table-count ,dual-vert-map)))))
+                                  ((gethash edge ,dual-vert-map) it)
+                                  ((gethash (he-opposite edge) ,dual-vert-map) it)
+                                  (t
+                                   (setf (gethash edge ,dual-vert-map)
+                                         (hash-table-count ,dual-vert-map)))))
             fns))
     (when (member :vert fn-list)
       (push `(vert-to-dual-vert (vert)
@@ -45,26 +45,26 @@ dual of the new objects."
 (defmacro defconway (name op-name num-vertexes fn-list &body body)
   "Helper macro for defining conway methods and registering them as operators."
   (with-gensyms
-   (param o!-op-name pos-array)
-   (let ((func-name (intern (concatenate 'string "CONWAY-" (string name)))))
-     `(progn
-	(defun ,func-name (,param)
-	  (with-slots (half-edges faces vertexes) ,param
-	    (let ((,pos-array (make-array
+      (param o!-op-name pos-array)
+    (let ((func-name (intern (concatenate 'string "CONWAY-" (string name)))))
+      `(progn
+         (defun ,func-name (,param)
+           (with-slots (half-edges faces vertexes) ,param
+             (let ((,pos-array (make-array
                                 ;; evaluate the form for num-vertexes in an environment where
 				;; f, e, and v are properly defined as necessary
-			       (let ((e (/ (length half-edges) 2))
-				     (f (length faces))
-				     (v (length vertexes)))
-				 (declare (ignore ,@(set-difference '(e f v)
-								    (flatten num-vertexes))))
-				 ,num-vertexes))))
-	      (labels ((set-pos (i v) (setf (aref ,pos-array i) v))
-		       (positions () ,pos-array))
-		(%with-dual-vert ,fn-list
-				 ,@body)))))
-	(let ((,o!-op-name (string-downcase,op-name)))
-	  (setf (gethash ,o!-op-name *conway-operators*) (function ,func-name)))))))
+                                (let ((e (/ (length half-edges) 2))
+                                      (f (length faces))
+                                      (v (length vertexes)))
+                                  (declare (ignore ,@(set-difference '(e f v)
+                                                                     (flatten num-vertexes))))
+                                  ,num-vertexes))))
+               (labels ((set-pos (i v) (setf (aref ,pos-array i) v))
+                        (positions () ,pos-array))
+                 (%with-dual-vert ,fn-list
+                   ,@body)))))
+         (let ((,o!-op-name (string-downcase,op-name)))
+           (setf (gethash ,o!-op-name *conway-operators*) (function ,func-name)))))))
 
 (defun lerp-vector (v1 v2 x)
   "Return the linear interpolation of two vectors at x"
@@ -81,7 +81,7 @@ dual of the new objects."
   "Return the centroid of the vertexes of the face"
   (mean-vector
    (iterate (for-vertex vertex in-face face)
-	    (collect (slot-value vertex 'pos))))  )
+     (collect (slot-value vertex 'pos))))  )
 
 (defun lerp-edge (edge x)
   "Return the linear interpolation of the two vertices of the edge, at x"
@@ -91,96 +91,141 @@ dual of the new objects."
 
 (defconway dual "d" f (:face)
   (iterate
-   (for face in faces)
-   (set-pos (face-to-dual-vert face)
-	    (face-center face)))
+    (for face in faces)
+    (set-pos (face-to-dual-vert face)
+             (face-center face)))
   (make-hem
    (iterate
-    (for vertex in vertexes)
-    (collect
-     (iterate
-      (for-face face in-vertex vertex)
-      (collect (face-to-dual-vert face)))))
+     (for vertex in vertexes)
+     (collect
+         (iterate
+           (for-face face in-vertex vertex)
+           (collect (face-to-dual-vert face)))))
    (positions)))
 
 (defconway ambo "a" e (:edge)
   (iterate
-   (for edge in half-edges)
-   (set-pos (edge-to-dual-vert edge)
-	    (lerp-edge edge 1/2)))
+    (for edge in half-edges)
+    (set-pos (edge-to-dual-vert edge)
+             (lerp-edge edge 1/2)))
   (make-hem
    (append
     (iterate (for face in faces)
-	     (collect
-	      (iterate
-	       (for-edge edge in-face face)
-	       (collect (edge-to-dual-vert edge)))))
+      (collect
+          (iterate
+            (for-edge edge in-face face)
+            (collect (edge-to-dual-vert edge)))))
     (iterate (for vertex in vertexes)
-	     (collect
-	      (iterate
-	       (for-edge edge in-vertex vertex)
-	       (collect (edge-to-dual-vert edge))))))
+      (collect
+          (iterate
+            (for-edge edge in-vertex vertex)
+            (collect (edge-to-dual-vert edge))))))
    (positions)))
-
-#|
-(defconway kis "k" (:face :vert)
-  (make-he-from-indices
-   (iterate (for face in faces)
-	    (appending
-	     (iterate (for-edge edge in-face face)
-		      (collect (list (face-to-dual-vert face)
-				     (vert-to-dual-vert (he-v1 edge))
-				     (vert-to-dual-vert (he-v2 edge)))))))))
-
-(defconway bitruncate "i" (:half-edge)
-  (make-he-from-indices
-   (nconc
-    (iterate (for vertex in vertexes)
-	     (collect
-	      (iterate (for-edge e in-vertex vertex)
-		       (appending (list (half-edge-to-dual-vert e)
-					(half-edge-to-dual-vert (he-prev e)))))))
-    (iterate (for face in faces)
-	     (collect (iterate (for-edge e in-face face)
-			       (collect (half-edge-to-dual-vert e))))))))
-|#
 
 (defconway truncate "t" (* 2 e) (:half-edge)
   (iterate
-   (for edge in half-edges)
-   (set-pos (half-edge-to-dual-vert edge)
-	    (lerp-vector (slot-value (he-v1 edge) 'pos)
-			 (slot-value (he-v2 edge) 'pos) 1/3)))
+    (for edge in half-edges)
+    (set-pos (half-edge-to-dual-vert edge)
+             (lerp-vector (slot-value (he-v1 edge) 'pos)
+                          (slot-value (he-v2 edge) 'pos) 1/3)))
   (make-hem
    (nconc
     (iterate (for vertex in vertexes)
-	     (collect
-	      (iterate (for-edge e in-vertex vertex)
-		       (collect (half-edge-to-dual-vert e)))))
+      (collect
+          (iterate (for-edge e in-vertex vertex)
+            (collect (half-edge-to-dual-vert e)))))
     (iterate (for face in faces)
-	     (collect
-	      (iterate (for-edge e in-face face)
-		       (appending (list (half-edge-to-dual-vert e)
-					(half-edge-to-dual-vert (he-opposite e))))))))
+      (collect
+          (iterate (for-edge e in-face face)
+            (appending (list (half-edge-to-dual-vert e)
+                             (half-edge-to-dual-vert (he-opposite e))))))))
    (positions)))
 
 
+(defconway gyro "g" (+ 2 (* 3 e)) (:half-edge :vert :face)
+  (iterate
+    (for edge in half-edges)
+    (set-pos (half-edge-to-dual-vert edge)
+             (lerp-edge edge 1/3)))
+  (iterate
+    (for face in faces)
+    (set-pos (face-to-dual-vert face)
+             (face-center face)))
 
+  (iterate
+    (for vertex in vertexes)
+    (set-pos (vert-to-dual-vert vertex)
+             (slot-value vertex 'pos)))
+  (make-hem
+   (iterate
+     (for edge in half-edges)
+     (collect (list (half-edge-to-dual-vert edge)
+                    (half-edge-to-dual-vert (he-opposite edge))
+                    (vert-to-dual-vert (he-v2 edge))
+                    (half-edge-to-dual-vert (he-next edge))
+                    (face-to-dual-vert (he-face edge)))))
+   (positions)))
 
+(defconway dual-chamfer "x" (+ e f) (:edge :face)
+  (iterate
+    (for face in faces)
+    (set-pos (face-to-dual-vert face)
+             (face-center face)))
+  (iterate
+    (for edge in half-edges)
+    (set-pos (edge-to-dual-vert edge)
+             (lerp-edge edge 1/2)))
+  (make-hem
+   (iterate
+     (for face in faces)
+     (appending
+      (iterate (for-edge edge in-face face)
+        (collect (list (face-to-dual-vert face)
+                       (edge-to-dual-vert edge)
+                       (edge-to-dual-vert (he-next edge)))))))
+   (positions)))
 
-(defun conway-translation (from to)
-  (setf (gethash (string-downcase from) *conway-operators*)
-        (apply #'compose (map 'list (lambda (c) (gethash (string (string-downcase c))
-                                                         *conway-operators*))
-                              to))))
+(defconway propellor "p" (+ (* 2 e) f v) (:half-edge :vert)
+  (iterate
+    (for edge in half-edges)
+    (set-pos (half-edge-to-dual-vert edge)
+             (lerp-edge edge 2/3)))
+  (iterate
+    (for vertex in vertexes)
+    (set-pos (vert-to-dual-vert vertex)
+             (slot-value vertex 'pos)))
 
-(mapcar #'(lambda (x) (apply #'conway-translation x))
-	'(("j" "da")
-	  ("b" "ta")
-	  ("m" "kj")
-	  ("o" "ja")
-	  ("e" "aa")
-	  ("n" "kd")))
+  (make-hem
+   (nconc
+    (iterate
+      (for edge in half-edges)
+      (collect (list (half-edge-to-dual-vert edge)
+                     (vert-to-dual-vert (he-v2 edge))
+                     (half-edge-to-dual-vert (he-opposite (he-next edge)))
+                     (half-edge-to-dual-vert (he-next edge)))))
+    (iterate
+      (for face in faces)
+      (collect (iterate (for-edge edge in-face face)
+                 (collect (half-edge-to-dual-vert edge))))))
+   (positions)))
+
+(defvar *translation-rules*
+  '(("k" "dtd")
+    ("i" "dk")
+    ("s" "dg")
+    ("c" "dx")
+    ("j" "da")
+    ("b" "ta")
+    ("m" "kj")
+    ("o" "ja")
+    ("e" "aa")
+    ("n" "kd")
+    ("dd" "")))
+
+(defun reduce-conway-set (str)
+  (block outer-rule
+    (do-list (rule *translation-rules*)
+      (if ()))))
 
 (defun conway (ident mesh)
   (funcall (apply #'compose (map 'list
