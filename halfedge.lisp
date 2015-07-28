@@ -33,8 +33,6 @@
     (format stream "#<HEM V=~A E=~A F=~A>"
             (length vertexes) (/ (length half-edges) 2) (length faces))))
 
-
-
 (defun make-hem (faces &optional positions (vertex-class 'vertex))
   "A face is a list of vertex indices in counter-clockwise order"
   (let ((he-map (make-hash-table :test 'equal))
