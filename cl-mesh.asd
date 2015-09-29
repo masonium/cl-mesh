@@ -16,4 +16,4 @@
      (:file "halfedge")
      (:file "conway"))
   :depends-on (:alexandria :iterate :split-sequence :metabang-bind
-                           :anaphora))
+                           :anaphora :let-plus))
